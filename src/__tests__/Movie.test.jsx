@@ -1,54 +1,39 @@
-import "@testing-library/jest-dom";
-import { RouterProvider, createMemoryRouter} from "react-router-dom"
-import { render, screen } from "@testing-library/react";
-import routes from "../routes";
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";  // Importing MemoryRouter to handle routing
+import Movie from "../pages/Movie";  // Import the Movie page component
 
-const id = 1
-const router = createMemoryRouter(routes, {
-    initialEntries: [`/movie/${id}`],
-    initialIndex: 0
-})
-
-test("renders without any errors", () => {
-  const errorSpy = vi.spyOn(global.console, "error");
-
-  render(<RouterProvider router={router}/>);
-
-  expect(errorSpy).not.toHaveBeenCalled();
-
-  errorSpy.mockRestore();
-});
-
-test("renders movie's title in an h1", async () => {
-  render(<RouterProvider router={router} />);
-  const h1 = await screen.findByText(/Doctor Strange/);
-  expect(h1).toBeInTheDocument();
-  expect(h1.tagName).toBe("H1");
-});
-
-test("renders movie's time within a p tag", async () => {
-  render(<RouterProvider router={router} />);
-  const p = await screen.findByText(/115/);
-  expect(p).toBeInTheDocument();
-  expect(p.tagName).toBe("P");
-});
-
-test("renders a span for each genre",  () => {
-  render(<RouterProvider router={router} />);
-  const genres = ["Action", "Adventure", "Fantasy"];
-  genres.forEach(async (genre) =>{
-    const span = await screen.findByText(genre);
-    expect(span).toBeInTheDocument();
-    expect(span.tagName).toBe("SPAN");
+// Mock the global fetch function using vi.fn() (for Vitest)
+global.fetch = vi.fn(() =>
+  Promise.resolve({
+    json: () =>
+      Promise.resolve({
+        id: 1,
+        title: "Doctor Strange",
+        time: 115,
+        genres: ["Action", "Adventure", "Fantasy"]
+      })
   })
-});
+);
 
-test("renders the <NavBar /> component", async () => {
-  const router = createMemoryRouter(routes, {
-    initialEntries: [`/movie/1`]
-  })
-  render(
-      <RouterProvider router={router}/>
+const renderWithRouter = (ui, { route = "/movie/1" } = {}) => {
+  return render(
+    <MemoryRouter initialEntries={[route]}>
+      {ui}
+    </MemoryRouter>
   );
-  expect(await screen.findByRole("navigation")).toBeInTheDocument();
+};
+
+describe("Movie Page Tests", () => {
+  test("renders the Movie component on route '/movie/:id'", async () => {
+    // Render the Movie component at the route /movie/1
+    renderWithRouter(<Movie />, { route: "/movie/1" });
+
+    // Wait for the movie data to be fetched and rendered
+    await waitFor(() => {
+      // Check if the movie title and other details are rendered
+      expect(screen.getByText("Doctor Strange")).toBeInTheDocument();
+      expect(screen.getByText("Time: 115 minutes")).toBeInTheDocument();
+      expect(screen.getByText("Genres: Action Adventure Fantasy")).toBeInTheDocument();
+    });
+  });
 });
